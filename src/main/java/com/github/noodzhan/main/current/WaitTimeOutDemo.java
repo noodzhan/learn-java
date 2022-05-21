@@ -17,9 +17,16 @@ public class WaitTimeOutDemo {
      */
     public int task(){
         try {
-            TimeUnit.SECONDS.sleep(5);
+            while (!Thread.currentThread().isInterrupted()) {
+                System.out.println("task is running");
+                TimeUnit.SECONDS.sleep(5);
+                return 2;
+            }
         } catch (InterruptedException e) {
-            e.printStackTrace();
+//            e.printStackTrace();
+            throw new RuntimeException("中断异常");
+        }finally {
+            System.out.println("finally");
         }
         return 1;
     }
@@ -29,16 +36,17 @@ public class WaitTimeOutDemo {
      * @param ms 毫秒
      * @return
      */
-    public int executeTaskHasTimeOut(long ms)  {
+    public synchronized int executeTaskHasTimeOut(long ms)  {
         long current = System.currentTimeMillis();
         long future = current + ms;
         int result = 0;
+        Thread threadTask = new Thread(() -> {
+            int task = this.task();
+            System.out.println("执行task任务，结果为"+task);
+        }, "task");
         while (future - current >= 0) {
             //开启一个业务线程，去执行任务，获取值。
-            new Thread(()->{
-                int task = this.task();
-                System.out.println(task);
-            },"task").start();
+            threadTask.start();
             try {
                 this.wait(future - current);
             } catch (InterruptedException e) {
@@ -46,6 +54,7 @@ public class WaitTimeOutDemo {
             }
             current = System.currentTimeMillis();
         }
+        threadTask.interrupt();
         return result;
 
     }
